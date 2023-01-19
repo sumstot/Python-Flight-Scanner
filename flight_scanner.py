@@ -80,3 +80,63 @@ def page_scrape():
     outbound_weekday = [value.split()[0] for value in outbound_date_list]
     return_day = [value.split()[0] for value in return_date_list]
     return_weekday = [value.split()[0] for value in return_date_list]
+
+    # getting prices
+    xp_prices = '//a[@class="booking-link"/span[@class="price option-text"]'
+    prices = browser.find_elements("xpath", xp_prices)
+    # MAY NEED TO REPLACE DOLLAR WITH YEN SIGN
+    prices_list = [price.text.replace('$', '') for price in prices if price.text != '']
+
+    prices_list = list(map(int, prices_list))
+
+    xp_stops = '//div[@class="section stops"]/div[1]'
+    stops = browser.find_elements("xpath", xp_stops)
+    stops_list = [stop.text[0].replace('n', '0') for stop in stops]
+    outbound_stop_list = stops_list[::2]
+    return_stop_list = stops_list[1::2]
+
+    xp_stops_cities = '//div[@class="section stops"]/div[2]'
+    stops_cities = browser.find_elements("xpath", xp_stops_cities)
+    stops_cities_list = [stop.text for stop in stops_cities]
+    outbound_stop_name_list = stops_cities_list[::2]
+    return_stop_name_list = stops_cities_list[1::2]
+
+    # gets the airline company and departure / arrival times for outbound and inbound
+
+    xp_schedule = '//div[@class="section times"]'
+    schedules = browser.find_elements("xpath", xp_schedule)
+    hours_list = []
+    carrier_list = []
+    for schedule in schedules:
+        hours_list.append(schedule.text.split('\n')[0])
+        carrier_list.append(schedule.text.split('\n')[1])
+    outbound_hours = hours_list[::2]
+    outbound_carrier = carrier_list[::2]
+    return_hours = hours_list[1::2]
+    return_carrier = carrier_list[1::2]
+
+    cols = (['Out Day', 'Out Time', 'Out Weekday', 'Out Airline', 'Out Cities', 'Out Duration', 'Out Stops', 'Out Stop Cities', 'Return Day', 'Return Time', 'Return Weekday', 'Return Airline', 'Return Cities', 'Return Duration', 'Return Stops', 'Return Stop Cities', 'Price'])
+
+    flights_df = pd.DataFrame({
+        'Out Day': outbound_day,
+        'Out Weekday': outbound_weekday,
+        'Out Duration': outbound_duration,
+        'Out Cities': outbound_section_names,
+        'Return Day': return_day,
+        'Return Weekday': return_weekday,
+        'Return Duration': return_duration,
+        'Return Cities': return_section_names,
+        'Out Stops': outbound_stop_list,
+        'Out Stop Cities': outbound_stop_name_list,
+        'Return Stops': return_stop_list,
+        'Return Stop Cities': return_stop_name_list,
+        'Out Time': outbound_carrier,
+        'Out Airline': outbound_carrier,
+        'Return Time': return_hours,
+        'Return Airline': return_carrier,
+        'Price': prices_list
+    })[cols]
+
+    flights_df['timestamp'] = strftime("%Y%m%d-%H%M")
+
+    return flights_df
